@@ -1,0 +1,272 @@
+:root {
+  --accent: #6ad0ff;
+  --accent-warm: #ffd75a;
+  --danger: #ff5566;
+  --ink: #e8f0ff;
+  --ink-dim: #8aa0c8;
+  --bg: #0a0e1a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------- 模态 ---------- */
+.modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(10, 20, 40, 0.55),
+    rgba(4, 6, 14, 0.85)
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 50;
+  padding: 24px;
+  animation: fadeIn 0.5s ease both;
+}
+
+.modal-card {
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  padding: 32px 24px;
+  border-radius: 20px;
+  background: linear-gradient(
+    160deg,
+    rgba(40, 56, 96, 0.85),
+    rgba(16, 22, 40, 0.85)
+  );
+  border: 1px solid rgba(106, 208, 255, 0.25);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55),
+    inset 0 0 30px rgba(106, 208, 255, 0.08);
+}
+
+.modal-card h1 {
+  margin: 0 0 12px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.modal-card p {
+  margin: 8px 0;
+  color: var(--ink-dim);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.modal-card .end-line {
+  font-size: 15px;
+  color: var(--ink);
+}
+.modal-card .end-line b {
+  color: var(--accent-warm);
+  font-size: 18px;
+  margin: 0 4px;
+}
+
+.modal-card .hint {
+  margin-top: 14px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+button {
+  margin-top: 18px;
+  padding: 12px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #061018;
+  background: linear-gradient(90deg, var(--accent), #b8ecff);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 6px 20px rgba(106, 208, 255, 0.35);
+}
+button:active {
+  transform: scale(0.96);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+  box-shadow: none;
+}
+
+/* ---------- HUD ---------- */
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  padding: env(safe-area-inset-top, 12px) 16px 0;
+}
+
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.meter {
+  flex: 1;
+  max-width: 220px;
+}
+
+.meter .label,
+.stats .label {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+  margin-right: 6px;
+  text-transform: uppercase;
+}
+
+.bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  border: 1px solid rgba(106, 208, 255, 0.2);
+  margin-top: 4px;
+}
+
+.fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #b8ecff);
+  transition: width 0.12s linear, background 0.3s ease;
+  box-shadow: 0 0 12px rgba(106, 208, 255, 0.6);
+}
+.fill.low {
+  background: linear-gradient(90deg, var(--danger), #ffa0a0);
+  box-shadow: 0 0 12px rgba(255, 85, 102, 0.6);
+  animation: pulse 0.8s ease-in-out infinite;
+}
+.fill.glide {
+  background: linear-gradient(90deg, #66ffd0, #b8ffe8);
+}
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------- Combo 闪光 ---------- */
+.combo-flash {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+.combo-flash.show {
+  animation: flashUp 0.9s ease-out forwards;
+}
+.combo-flash.resonance {
+  color: var(--accent-warm);
+  content: '节奏共振';
+}
+.combo-flash.resonance.show::before {
+  content: '节奏共振';
+}
+.combo-flash.hit.show::before {
+  content: '连击中断';
+  color: var(--danger);
+}
+
+@keyframes flashUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -70%) scale(1);
+  }
+}

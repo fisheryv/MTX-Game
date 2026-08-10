@@ -1,0 +1,11 @@
+{
+  "appId": "com.swiftsong.game",
+  "appName": "Song of the Swift",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "Haptics": {}
+  }
+}

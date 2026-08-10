@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0a0e1a" />
+    <title>雨燕：无尽旋律</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game-canvas"></canvas>
+
+      <!-- 启动 / 授权遮罩 -->
+      <div id="permission-modal" class="modal hidden">
+        <div class="modal-card">
+          <h1>雨燕 · 无尽旋律</h1>
+          <p>倾斜设备以驾驭雨燕，按节奏穿越音符之河。</p>
+          <button id="start-btn">开启飞行</button>
+          <p class="hint">需要使用设备的方向传感器</p>
+        </div>
+      </div>
+
+      <!-- HUD -->
+      <div id="hud" class="hidden">
+        <div class="hud-top">
+          <div class="meter">
+            <span class="label">能量</span>
+            <div class="bar"><div id="energy-fill" class="fill"></div></div>
+          </div>
+          <div class="stats">
+            <div><span class="label">里程</span><span id="distance">0</span> km</div>
+            <div><span class="label">连击</span><span id="combo">0</span></div>
+            <div><span class="label">金币</span><span id="coins">0</span></div>
+          </div>
+        </div>
+        <div id="combo-flash" class="combo-flash"></div>
+      </div>
+
+      <!-- 终局结算 -->
+      <div id="endgame" class="modal hidden">
+        <div class="modal-card">
+          <h1>终章</h1>
+          <p class="end-line">你已飞过 <b id="end-distance">0</b> 公里</p>
+          <p class="end-line">演奏了 <b id="end-time">0</b> 秒的乐章</p>
+          <p class="end-line">收集金币 <b id="end-coins">0</b></p>
+          <button id="restart-btn">再次起飞</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "swift-endless-melody",
+  "version": "0.1.0",
+  "description": "Swift: Endless Melody - 3D endless flyer rhythm collector",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.160.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0"
+  }
+}

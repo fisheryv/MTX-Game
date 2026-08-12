@@ -1,7 +1,7 @@
 /**
- * 启动 / 授权弹窗控制器。
- * 负责显示初始遮罩与"开启飞行"按钮回调，以及终局结算界面的显隐。
- * 同时管理本地存储的高分记录。
+ * 菜单与终局控制器。
+ * 菜单态仅展示 menu-bg（bg.png）与"点击屏幕起飞"提示；
+ * 点击屏幕任意位置即开始游戏。终局结算界面的显隐与本地高分记录由本类管理。
  */
 
 const STORAGE_KEY = 'sem-best-v1';
@@ -18,11 +18,7 @@ interface EndStats {
 }
 
 export class PermissionModal {
-  private modal: HTMLElement;
-  private startBtn: HTMLButtonElement;
-  private startLabel: HTMLElement;
-  private startHint: HTMLElement;
-  private auroraBg: HTMLElement;
+  private menuBg: HTMLElement;
   private endgame: HTMLElement;
   private restartBtn: HTMLElement;
   private endDistance: HTMLElement;
@@ -32,16 +28,14 @@ export class PermissionModal {
   private endRecord: HTMLElement;
   private bestDistanceEl: HTMLElement;
   private bestCoinsEl: HTMLElement;
+  private ready = false;
+  private readonly onDocumentClick: (e: MouseEvent) => void;
 
   constructor(
     private readonly onStart: () => void,
     private readonly onRestart: () => void
   ) {
-    this.modal = document.getElementById('permission-modal')!;
-    this.startBtn = document.getElementById('start-btn') as HTMLButtonElement;
-    this.startLabel = document.getElementById('start-label')!;
-    this.startHint = document.getElementById('start-hint')!;
-    this.auroraBg = document.querySelector('.aurora-bg') as HTMLElement;
+    this.menuBg = document.querySelector('.menu-bg') as HTMLElement;
     this.endgame = document.getElementById('endgame')!;
     this.restartBtn = document.getElementById('restart-btn')!;
     this.endDistance = document.getElementById('end-distance')!;
@@ -52,10 +46,17 @@ export class PermissionModal {
     this.bestDistanceEl = document.getElementById('best-distance')!;
     this.bestCoinsEl = document.getElementById('best-coins')!;
 
-    this.startBtn.addEventListener('click', () => {
-      if (this.startBtn.disabled) return;
+    // 菜单态下点击屏幕任意位置起飞
+    this.onDocumentClick = (e: MouseEvent) => {
+      if (!this.ready) return;
+      // 终局结算界面可见时，不响应起飞点击
+      if (!this.endgame.classList.contains('hidden')) return;
+      // 忽略对结算界面内元素的点击
+      if (this.endgame.contains(e.target as Node)) return;
       this.onStart();
-    });
+    };
+    document.addEventListener('click', this.onDocumentClick);
+
     this.restartBtn.addEventListener('click', () => {
       this.hideEndgame();
       this.onRestart();
@@ -63,28 +64,22 @@ export class PermissionModal {
   }
 
   public showStart() {
-    this.modal.classList.remove('hidden');
-    this.auroraBg.classList.remove('is-hidden');
+    this.menuBg.classList.add('is-visible');
   }
+
   public hideStart() {
-    this.modal.classList.add('hidden');
-    this.auroraBg.classList.add('is-hidden');
+    this.menuBg.classList.remove('is-visible');
+    this.ready = false;
   }
 
-  /** 启动按钮进入加载态 */
-  public setStartLoading(label: string, hint: string) {
-    this.startBtn.disabled = true;
-    this.startBtn.classList.add('is-loading');
-    this.startLabel.textContent = label;
-    this.startHint.textContent = hint;
+  /** 模型加载中：暂不可起飞 */
+  public setStartLoading(_label: string, _hint: string) {
+    this.ready = false;
   }
 
-  /** 启动按钮就绪可点击 */
-  public setStartReady(label = '开启飞行', hint = '准备就绪，点击起飞') {
-    this.startBtn.disabled = false;
-    this.startBtn.classList.remove('is-loading');
-    this.startLabel.textContent = label;
-    this.startHint.textContent = hint;
+  /** 就绪可起飞：允许点击屏幕开始 */
+  public setStartReady(_label?: string, _hint?: string) {
+    this.ready = true;
   }
 
   public showEndgame(stats: EndStats) {

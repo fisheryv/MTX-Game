@@ -173,6 +173,22 @@ body {
   animation: fadeIn 0.5s ease both;
 }
 
+/* 启动菜单：使用 bg.png 作为全屏背景，遮罩半透明以突出文案 */
+.modal--start {
+  background: linear-gradient(
+    180deg,
+    rgba(6, 9, 18, 0.25) 0%,
+    rgba(6, 9, 18, 0.55) 50%,
+    rgba(6, 9, 18, 0.78) 100%
+  );
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+  cursor: pointer;
+}
+.modal--start .modal-card {
+  cursor: default;
+}
+
 .modal-card {
   position: relative;
   max-width: 460px;
@@ -981,4 +997,221 @@ body {
     transition-duration: 0.01ms !important;
   }
   .aurora-band, .stars, .brand-mark, .end-banner-icon { animation: none; }
+}
+
+/* ============================================================
+   菜单背景（bg.png）
+   ============================================================ */
+.menu-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: url('/img/bg.png') center center / cover no-repeat;
+  background-color: #060912;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+.menu-bg.is-visible {
+  opacity: 1;
+}
+
+/* ============================================================
+   序章背景介绍（bg2.png + 滚动文字）
+   ============================================================ */
+.intro-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: #04060c;
+  transition: opacity 0.6s ease;
+}
+.intro-screen.is-fading {
+  opacity: 0;
+}
+
+.intro-bg {
+  position: absolute;
+  inset: 0;
+  background: url('/img/bg2.png') center center / cover no-repeat;
+  background-color: #04060c;
+  filter: brightness(0.55) saturate(0.9);
+}
+
+.intro-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg,
+      rgba(4, 6, 12, 0.85) 0%,
+      rgba(4, 6, 12, 0.25) 25%,
+      rgba(4, 6, 12, 0.25) 70%,
+      rgba(4, 6, 12, 0.9) 100%),
+    radial-gradient(ellipse at center, transparent 40%, rgba(4, 6, 12, 0.6) 100%);
+}
+
+.intro-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.intro-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, 0);
+  width: min(560px, 86vw);
+  padding: 0 16px 40px;
+  text-align: center;
+  will-change: transform;
+}
+
+.intro-section {
+  margin-bottom: 36px;
+}
+.intro-section:last-child {
+  margin-bottom: 80px;
+}
+
+.intro-section--quote {
+  font-style: italic;
+  color: var(--accent-soft);
+}
+
+.intro-heading {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 6px;
+  color: var(--accent-warm);
+  text-shadow: 0 0 18px rgba(255, 215, 90, 0.45);
+}
+
+.intro-paragraph {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.95;
+  color: var(--ink);
+  letter-spacing: 1px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+}
+.intro-section--quote .intro-paragraph {
+  font-size: 16px;
+  line-height: 2.1;
+  color: var(--accent-soft);
+}
+.intro-section--quote .intro-paragraph:last-child {
+  font-size: 12px;
+  color: var(--ink-dim);
+  letter-spacing: 2px;
+  margin-top: 8px;
+}
+
+/* 序章首屏大标题 */
+.intro-section:first-child .intro-paragraph {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 10px;
+  color: var(--ink);
+  background: linear-gradient(120deg, var(--accent-soft) 0%, var(--accent) 40%, var(--accent-warm) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  margin-bottom: 24px;
+}
+
+/* 跳过按钮 */
+.intro-skip {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 12px) + 12px);
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--ink-dim);
+  background: rgba(10, 16, 30, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.intro-skip:hover {
+  color: var(--ink);
+  background: rgba(20, 28, 50, 0.75);
+  border-color: var(--border-strong);
+}
+
+/* ============================================================
+   "点击屏幕起飞" 提示（菜单态独立元素，无遮罩弹窗）
+   ============================================================ */
+.tap-hint-standalone {
+  position: absolute;
+  bottom: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--accent-soft);
+  background: linear-gradient(135deg, rgba(106, 208, 255, 0.14), rgba(106, 208, 255, 0.05));
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+  animation: tapPulse 2s ease-in-out infinite;
+}
+.tap-hint-icon {
+  display: inline-flex;
+  color: var(--accent);
+  animation: tapArrow 2s ease-in-out infinite;
+}
+
+@keyframes tapPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(106, 208, 255, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(106, 208, 255, 0);
+    transform: scale(1.03);
+  }
+}
+@keyframes tapArrow {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+
+/* ============================================================
+   响应式（intro / menu 适配）
+   ============================================================ */
+@media (max-width: 480px) {
+  .intro-content { width: 90vw; padding: 0 12px 40px; }
+  .intro-paragraph { font-size: 14px; line-height: 1.9; }
+  .intro-section--quote .intro-paragraph { font-size: 15px; }
+  .intro-section:first-child .intro-paragraph { font-size: 26px; letter-spacing: 8px; }
+  .intro-heading { font-size: 16px; letter-spacing: 4px; }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .intro-content { width: 80vw; }
+  .intro-paragraph { font-size: 13px; line-height: 1.8; }
+  .intro-section:first-child .intro-paragraph { font-size: 22px; }
 }

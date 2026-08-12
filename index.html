@@ -16,71 +16,30 @@
     <div id="app">
       <canvas id="game-canvas"></canvas>
 
+      <!-- 序章背景介绍（仅首次启动展示） -->
+      <div id="intro-screen" class="intro-screen hidden">
+        <div class="intro-bg"></div>
+        <div class="intro-vignette" aria-hidden="true"></div>
+        <div class="intro-scroll">
+          <div class="intro-content"></div>
+        </div>
+        <button class="intro-skip" type="button" aria-label="跳过序章">
+          <span>跳过</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 菜单背景图（bg.png） -->
+      <div class="menu-bg" aria-hidden="true"></div>
+
       <!-- 极光装饰背景（菜单态可见） -->
-      <div class="aurora-bg" aria-hidden="true">
+      <div class="aurora-bg is-hidden" aria-hidden="true">
         <div class="aurora-band band-1"></div>
         <div class="aurora-band band-2"></div>
         <div class="aurora-band band-3"></div>
         <div class="stars"></div>
-      </div>
-
-      <!-- 启动 / 授权遮罩 -->
-      <div id="permission-modal" class="modal modal--start hidden">
-        <div class="modal-card modal-card--hero">
-          <div class="brand">
-            <div class="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 48 48" width="48" height="48">
-                <defs>
-                  <linearGradient id="swift-g" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0" stop-color="#6ad0ff"/>
-                    <stop offset="0.5" stop-color="#9be8ff"/>
-                    <stop offset="1" stop-color="#ffd75a"/>
-                  </linearGradient>
-                </defs>
-                <path d="M24 4 L30 18 L44 22 L32 28 L36 44 L24 36 L12 44 L16 28 L4 22 L18 18 Z"
-                      fill="url(#swift-g)" opacity="0.95"/>
-              </svg>
-            </div>
-            <div class="brand-text">
-              <h1 class="title">雨燕</h1>
-              <div class="subtitle">无尽旋律</div>
-            </div>
-          </div>
-
-          <p class="lead">倾斜设备驾驭气流，循着音符之河穿越极光夜空。</p>
-
-          <div class="controls-hint" id="controls-hint">
-            <div class="controls-title">操作指南</div>
-            <div class="control-row">
-              <div class="control-item">
-                <span class="key">←</span><span class="key">→</span>
-                <span class="control-label">左右倾斜</span>
-              </div>
-              <div class="control-item">
-                <span class="key">↑</span><span class="key">↓</span>
-                <span class="control-label">拉升 / 俯冲</span>
-              </div>
-              <div class="control-item">
-                <span class="key key-wide">空格</span>
-                <span class="control-label">滑翔</span>
-              </div>
-              <div class="control-item">
-                <span class="key key-wide">Shift</span>
-                <span class="control-label">闪避</span>
-              </div>
-            </div>
-          </div>
-
-          <button id="start-btn" class="btn-primary">
-            <span class="btn-spinner" id="start-spinner" aria-hidden="true"></span>
-            <span class="btn-label" id="start-label">加载中…</span>
-          </button>
-
-          <div class="hint-row">
-            <span class="hint-dot"></span>
-            <span id="start-hint">正在准备极光羽翼</span>
-          </div>
-        </div>
       </div>
 
       <!-- HUD -->

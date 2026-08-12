@@ -1,5 +1,5 @@
 /**
- * 雨燕玩家实体：加载外部 GLB 模型（火烈鸟）+ 姿态控制 + 翅膀扇动动画。
+ * 雨燕玩家实体：加载外部 GLB 模型（swift1.glb 俯视展开雨燕）+ 姿态控制 + 扇动动画。
  * 若模型未就绪则回退到 low-poly 程序化鸟形。
  */
 import * as THREE from 'three';
@@ -15,8 +15,11 @@ export class Swift {
 
   // 模型模式（GLB）vs 程序化模式
   private useModel = false;
-  private mixer: THREE.AnimationMixer | null = null; // GLB 模型飞行动画
-  private flapAction: THREE.AnimationAction | null = null;
+  private modelGroup: THREE.Group | null = null; // GLB 模型引用（用于姿态）
+  private modelLeftWing: THREE.Object3D | null = null; // 分离出的左翅（pivot group）
+  private modelRightWing: THREE.Object3D | null = null; // 分离出的右翅（pivot group）
+  private leftWingBaseX = 0; // 左翅 pivot 基础 X 位置
+  private rightWingBaseX = 0; // 右翅 pivot 基础 X 位置
 
   // 程序化模式专用
   private body!: THREE.Mesh;
@@ -66,8 +69,8 @@ export class Swift {
     if (model) {
       this.setupModel(model, animations);
       this.useModel = true;
-      // GLB 火烈鸟模型缩放 0.025 后约 1.3×2.2×4.4，包围球半径约 2.5
-      this.collideRadius = 2.5;
+      // swift1.glb 缩放 1.8 后约 3.4×0.4×1.9，对角线半长约 2.0
+      this.collideRadius = 2.0;
     } else {
       this.buildProceduralMesh();
       // 程序化雨燕约 1.1×0.8×2.4，包围球半径约 1.4
@@ -76,24 +79,170 @@ export class Swift {
     this.buildTrail();
   }
 
-  /** 使用外部 GLB 模型 */
-  private setupModel(model: THREE.Group, animations?: THREE.AnimationClip[]) {
-    // 火烈鸟模型默认朝 +Z，需旋转 180° 使喙朝 -Z（飞行方向）
+  /** 使用外部 GLB 模型（swift1.glb：俯视展开的雨燕） */
+  private setupModel(model: THREE.Group, _animations?: THREE.AnimationClip[]) {
+    // swift1.glb 原始尺寸 1.91(X翼展) × 0.21(Y薄) × 1.04(Z前后)
+    // 模型默认头朝 +Z，需旋转 180° 使喙朝 -Z（飞行方向）
     model.rotation.y = Math.PI;
-    // 原始模型边界约 52×89×177，缩放至约 1.3×2.2×4.4
-    model.scale.setScalar(0.025);
-    // 模型几何中心偏下，上移使身体中心对齐原点
-    model.position.y = 0.85;
+    // 缩放至翼展约 3.4、身长约 1.9，与程序化版本尺度接近
+    model.scale.setScalar(1.8);
+    // Y 非常薄，模型中心已在原点，无需上移
+    model.position.y = 0;
     this.group.add(model);
+    this.modelGroup = model;
 
-    // 播放模型内置的飞行动画（通过 morphTarget 权重驱动翅膀扇动）
-    if (animations && animations.length > 0) {
-      this.mixer = new THREE.AnimationMixer(model);
-      this.flapAction = this.mixer.clipAction(animations[0]);
-      this.flapAction.play();
+    // 替换模型所有网格的材质为金色（Lambert 不依赖环境贴图）
+    const goldMat = new THREE.MeshLambertMaterial({
+      color: 0xffc940,
+      emissive: 0xff8800,
+      emissiveIntensity: 0.5,
+      side: THREE.DoubleSide, // 双面渲染，避免翅膀法线方向不一致导致单面不可见
+    });
+    model.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        obj.material = goldMat;
+      }
+    });
+
+    // swift1.glb 是单网格，翅膀与身体一体。
+    // 按 X 坐标分离出左右翅膀，使其可独立旋转实现上下扇动。
+    this.splitWings(model);
+  }
+
+  /** 将单网格雨燕按 X 坐标分离为左翅、身体、右翅三个网格
+   *  身体与翅膀在根部区域重叠，避免扇动时连接处断开 */
+  private splitWings(model: THREE.Group) {
+    const threshold = 0.08; // 翅膀判定阈值，|avgX| > threshold 视为翅膀
+
+    // 先收集所有网格，避免在遍历中修改场景树导致意外行为
+    const meshes: THREE.Mesh[] = [];
+    model.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) meshes.push(obj);
+    });
+
+    // 标记是否已找到包含完整左右翅膀的主网格，避免多网格模型重复分离
+    let wingsSplit = false;
+
+    for (const mesh of meshes) {
+      const geo = mesh.geometry;
+      const mat = mesh.material as THREE.Material;
+      const pos = geo.getAttribute('position');
+      const idx = geo.getIndex();
+
+      if (!idx) continue; // 无索引几何体不处理
+
+      // 按三角形中心 X 分类
+      const leftTris: number[] = [];
+      const rightTris: number[] = [];
+      const bodyTris: number[] = [];
+      for (let i = 0; i < idx.count; i += 3) {
+        const a = idx.getX(i);
+        const b = idx.getX(i + 1);
+        const c = idx.getX(i + 2);
+        const avgX = (pos.getX(a) + pos.getX(b) + pos.getX(c)) / 3;
+        if (avgX < -threshold) leftTris.push(a, b, c);
+        else if (avgX > threshold) rightTris.push(a, b, c);
+        else bodyTris.push(a, b, c);
+      }
+
+      // 若已分离过翅膀，且当前网格不是同时包含左右翅的主网格，则跳过（不修改几何体）
+      if (wingsSplit && !(leftTris.length > 0 && rightTris.length > 0)) continue;
+
+      // 仅当网格同时包含左右翅膀时才执行分离；仅有单侧或无翅膀的网格保持原样
+      if (leftTris.length === 0 || rightTris.length === 0) continue;
+
+      wingsSplit = true;
+
+      // 计算翅膀根部 X：取最靠近身体的顶点 X 坐标（|x| 最小）
+      let leftRoot = -threshold;
+      let rightRoot = threshold;
+      for (const t of leftTris) {
+        const x = pos.getX(t);
+        if (x > leftRoot) leftRoot = x;
+      }
+      for (const t of rightTris) {
+        const x = pos.getX(t);
+        if (x < rightRoot) rightRoot = x;
+      }
+
+      // 提取子几何体：使用 pivot Group，翅膀网格作为子节点偏移
+      // 旋转 pivot Group 即可绕翅膀根部扇动，无需平移几何体顶点
+      const buildSub = (tris: number[], pivotX: number): THREE.Group => {
+        const subGeo = this.extractTriangles(geo, tris);
+        subGeo.computeBoundingSphere();
+        subGeo.computeBoundingBox();
+        const subMesh = new THREE.Mesh(subGeo, mat);
+        subMesh.frustumCulled = false; // 翅膀始终渲染，避免视锥剔除导致闪烁
+        subMesh.position.set(-pivotX, 0, 0); // 网格反向偏移，使 pivot 位于原点
+        const pivot = new THREE.Group();
+        pivot.add(subMesh);
+        pivot.position.set(pivotX, 0, 0); // pivot 在翅膀根部
+        return pivot;
+      };
+
+      const leftWing = buildSub(leftTris, leftRoot);
+      const rightWing = buildSub(rightTris, rightRoot);
+
+      // 身体网格：保留原三角形 + 翅膀根部附近的三角形（重叠区域）
+      // 这样翅膀旋转时，连接处仍被身体覆盖，不会露出裂缝
+      const overlapLeft: number[] = [];
+      const overlapRight: number[] = [];
+      for (let i = 0; i < idx.count; i += 3) {
+        const a = idx.getX(i);
+        const b = idx.getX(i + 1);
+        const c = idx.getX(i + 2);
+        const avgX = (pos.getX(a) + pos.getX(b) + pos.getX(c)) / 3;
+        // 重叠区域：threshold < |avgX| < |root| + margin
+        const margin = 0.00;
+        if (avgX < -threshold && avgX > leftRoot - margin) overlapLeft.push(a, b, c);
+        else if (avgX > threshold && avgX < rightRoot + margin) overlapRight.push(a, b, c);
+      }
+      const bodyGeo = this.extractTriangles(geo, [...bodyTris, ...overlapLeft, ...overlapRight]);
+      mesh.geometry = bodyGeo;
+
+      // 添加翅膀到同一父级
+      const parent = mesh.parent || model;
+      parent.add(leftWing);
+      parent.add(rightWing);
+      this.modelLeftWing = leftWing;
+      this.modelRightWing = rightWing;
+      // 保存基础 X 位置，扇动时在此基础上动态向身体方向偏移
+      this.leftWingBaseX = leftWing.position.x;
+      this.rightWingBaseX = rightWing.position.x;
+    }
+  }
+
+  /** 从源几何体提取指定三角形索引子集，返回新的独立几何体 */
+  private extractTriangles(src: THREE.BufferGeometry, tris: number[]): THREE.BufferGeometry {
+    const srcPos = src.getAttribute('position');
+    const srcNorm = src.getAttribute('normal');
+    const srcUv = src.getAttribute('uv');
+    const vertexMap = new Map<number, number>();
+    const positions: number[] = [];
+    const normals: number[] = [];
+    const uvs: number[] = [];
+
+    for (const oldIdx of tris) {
+      if (!vertexMap.has(oldIdx)) {
+        const ni = positions.length / 3;
+        vertexMap.set(oldIdx, ni);
+        positions.push(srcPos.getX(oldIdx), srcPos.getY(oldIdx), srcPos.getZ(oldIdx));
+        if (srcNorm) normals.push(srcNorm.getX(oldIdx), srcNorm.getY(oldIdx), srcNorm.getZ(oldIdx));
+        if (srcUv) uvs.push(srcUv.getX(oldIdx), srcUv.getY(oldIdx));
+      }
     }
 
-    // 光晕已移除
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    if (normals.length) {
+      out.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    } else {
+      // 源模型无 normal 属性，必须重新计算，否则光照计算错误导致全黑
+      out.computeVertexNormals();
+    }
+    if (uvs.length) out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    out.setIndex(tris.map(i => vertexMap.get(i)!));
+    return out;
   }
 
   /** GLB 模型模式：通过 morphTarget 驱动翅膀 */
@@ -434,8 +583,8 @@ export class Swift {
     // 构造朝向
     // pitch: 正=俯冲(下键) → 机头下压；负=拉升(上键) → 机头上抬
     // roll:  正=右飞 → 右倾；负=左飞 → 左倾
-    //   - 程序化模型：翅膀与坐标轴一致，Z 旋转取 -roll
-    //   - GLB 模型：local rotation.y=π 翻转了 X 轴(左右翅膀互换)，Z 旋转取 +roll
+    //   - swift1.glb 因 rotation.y=π 翻转了 X 轴(左右翅膀互换)，Z 旋转取 +roll
+    //   - 程序化模型未翻转，Z 旋转取 -roll
     const rollSign = this.useModel ? 1 : -1;
     this.tmpEuler.set(-pitch * 0.5, this.yaw, rollSign * roll * 0.6, 'YXZ');
     this.tmpQuat.setFromEuler(this.tmpEuler);
@@ -459,12 +608,8 @@ export class Swift {
     this.wingPhase += dt * this.flapSpeed(pitch, glideActive);
 
     if (this.useModel) {
-      // 推进 GLB 模型内置飞行动画（morphTarget 权重关键帧）
-      this.mixer?.update(dt);
-      // 滑翔时减慢扇动频率以呈现滑翔姿态
-      if (this.flapAction) {
-        this.flapAction.timeScale = glideActive ? 0.3 : 1.0;
-      }
+      // swift1.glb 无骨骼动画，用整体俯仰模拟翅膀扇动
+      this.animateModelFlap(pitch, glideActive);
     } else {
       this.animateProceduralWings(pitch, glideActive);
     }
@@ -473,13 +618,15 @@ export class Swift {
     this.velocity.set(0, verticalVel * glideFactor, 0).addScaledVector(this.tmpForward, this.speed);
 
     // 拖尾：采样路径点 + 重建极光条带
+    // 沿当前前向反方向偏移采样，保证转向时拖尾头部始终在雨燕正后方
     this.trailTimer += dt;
     if (this.trailTimer > 0.016) {
       this.trailTimer = 0;
+      const back = 1.0;
       const i3 = this.trailCursor * 3;
-      this.trailPositions[i3] = this.position.x;
-      this.trailPositions[i3 + 1] = this.position.y;
-      this.trailPositions[i3 + 2] = this.position.z + 1.0;
+      this.trailPositions[i3] = this.position.x - this.tmpForward.x * back;
+      this.trailPositions[i3 + 1] = this.position.y - this.tmpForward.y * back;
+      this.trailPositions[i3 + 2] = this.position.z - this.tmpForward.z * back;
       this.trailCursor = (this.trailCursor + 1) % this.trailCount;
       if (this.trailWritten < this.trailCount) this.trailWritten++;
       this.rebuildRibbon();
@@ -501,6 +648,36 @@ export class Swift {
     this.leftWing.rotation.x = flap;
     this.rightWing.rotation.x = flap;
     this.body.rotation.z = this.bank * 0.3;
+    void pitch;
+  }
+
+  /** GLB 模型模式（swift）：分离的翅膀上下扇动 + 飞行姿态
+   *  扇动角度越大，翅膀越向身体方向收拢，避免根部与身体断裂 */
+  private animateModelFlap(pitch: number, glideActive: boolean) {
+    // 身体姿态（俯仰 + 侧倾）
+    if (this.modelGroup) {
+      this.modelGroup.rotation.x = this.pitchVis * 0.5;
+      this.modelGroup.rotation.z = this.bank * 0.3;
+    }
+    // 翅膀上下扇动：绕 Z 轴旋转，左右翅同步上抬/下压
+    const flapAmp = glideActive ? 0.15 : 0.7;
+    const flap = Math.sin(this.wingPhase) * flapAmp;
+    // 扇动角度越大，翅膀向身体方向移动越多：inward = |sin(flap)| * factor
+    // 用 |sin(flap)| 而非 |flap|，让水平位置（flap=0）时偏移为 0
+    const inwardFactor = 0.08;
+    const inward = Math.abs(Math.sin(flap)) * inwardFactor;
+    if (this.modelLeftWing) {
+      // 左翅在 -X 侧，绕 Z 正旋转 → 翼尖上抬
+      this.modelLeftWing.rotation.z = flap;
+      // 向身体方向移动 = +X 方向
+      this.modelLeftWing.position.x = this.leftWingBaseX + inward;
+    }
+    if (this.modelRightWing) {
+      // 右翅在 +X 侧，绕 Z 负旋转 → 翼尖上抬（与左翅同步）
+      this.modelRightWing.rotation.z = -flap;
+      // 向身体方向移动 = -X 方向
+      this.modelRightWing.position.x = this.rightWingBaseX - inward;
+    }
     void pitch;
   }
 

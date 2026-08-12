@@ -7,6 +7,8 @@ import * as THREE from 'three';
 export class Coin {
   public readonly mesh: THREE.Group;
   public active = false;
+  /** 碰撞半径（包裹硬币的包围球，半径 0.42 + 厚度/2） */
+  public readonly collideRadius = 0.5;
   private spin = 0;
 
   private static discGeo: THREE.CylinderGeometry;
@@ -54,27 +56,32 @@ export class Coin {
   constructor() {
     this.mesh = new THREE.Group();
 
-    // 硬币圆盘（水平放置，轴沿 Y）
+    // 内层组：竖放（圆盘面朝 ±Z），外层组负责绕垂直轴旋转
+    const inner = new THREE.Group();
+    inner.rotation.x = Math.PI / 2;
+
+    // 硬币圆盘（默认轴沿 Y，竖放后轴沿 Z）
     const disc = new THREE.Mesh(Coin.discGeo, Coin.mat);
-    this.mesh.add(disc);
+    inner.add(disc);
 
     // 边缘环
     const edge = new THREE.Mesh(Coin.edgeGeo, Coin.mat);
     edge.rotation.x = Math.PI / 2;
-    this.mesh.add(edge);
+    inner.add(edge);
 
     // 正面五角星
     const starFront = new THREE.Mesh(Coin.starGeo, Coin.mat);
     starFront.position.set(0, 0.045, 0);
     starFront.rotation.x = -Math.PI / 2;
-    this.mesh.add(starFront);
+    inner.add(starFront);
 
     // 背面五角星
     const starBack = new THREE.Mesh(Coin.starGeo, Coin.mat);
     starBack.position.set(0, -0.045, 0);
     starBack.rotation.x = Math.PI / 2;
-    this.mesh.add(starBack);
+    inner.add(starBack);
 
+    this.mesh.add(inner);
     this.mesh.visible = false;
     this.mesh.frustumCulled = false;
   }
@@ -89,9 +96,9 @@ export class Coin {
   public update(dt: number) {
     if (!this.active) return;
     this.spin += dt * 3.0;
-    // 硬币沿 Y 轴旋转（像真实硬币翻转）
+    // 硬币平放，绕垂直轴（Y）旋转
     this.mesh.rotation.y = this.spin;
-    this.mesh.rotation.x = Math.sin(this.spin * 0.7) * 0.3;
+    this.mesh.rotation.x = 0;
   }
 
   public recycle() {

@@ -15,6 +15,7 @@ import { GyroController } from '../systems/GyroController';
 import { AudioEngine } from '../systems/AudioEngine';
 import { CollisionSystem } from '../systems/CollisionSystem';
 import { LevelSpawner } from '../systems/LevelSpawner';
+import { ParticleBurst } from '../systems/ParticleBurst';
 import { Swift } from '../entities/Swift';
 import { Loop } from './Loop';
 import { clamp } from '../utils/MathUtils';
@@ -59,6 +60,7 @@ export class Game {
   private readonly collision: CollisionSystem;
   private readonly spawner: LevelSpawner;
   private readonly swift: Swift;
+  private readonly particles: ParticleBurst;
   private readonly loop: Loop;
 
   private stats: PlayerStats = {
@@ -84,16 +86,23 @@ export class Game {
   // 复用临时
   private cb: GameCallbacks;
 
-  constructor(canvas: HTMLCanvasElement, cb: GameCallbacks, swiftModel?: THREE.Group) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    cb: GameCallbacks,
+    swiftModel?: THREE.Group,
+    swiftAnimations?: THREE.AnimationClip[]
+  ) {
     this.cb = cb;
     this.scene = new SceneManager(canvas);
     this.gyro = new GyroController();
     this.audio = new AudioEngine();
     this.collision = new CollisionSystem();
-    this.swift = new Swift(swiftModel);
+    this.swift = new Swift(swiftModel, swiftAnimations);
     this.scene.scene.add(this.swift.group);
-    this.scene.scene.add(this.swift.trailPoints);
+    this.scene.scene.add(this.swift.trailMesh);
     this.spawner = new LevelSpawner(this.scene.scene);
+    this.particles = new ParticleBurst(256);
+    this.scene.scene.add(this.particles.points);
 
     this.loop = new Loop(this.onFixedUpdate, this.onRender);
   }
@@ -148,6 +157,7 @@ export class Game {
     this.slowmo = 1;
     this.swift.reset();
     this.spawner.reset(-80);
+    this.particles.reset();
     this.emitStats();
   }
 
@@ -198,8 +208,7 @@ export class Game {
       effPitch,
       input.roll,
       s.glideActive,
-      s.invincibleTimer > 0,
-      s.energy
+      s.invincibleTimer > 0
     );
 
     // 关卡生成 / 回收
@@ -208,6 +217,14 @@ export class Game {
 
     // 碰撞
     this.collision.checkNotes(this.swift, this.spawner.activeNotes, (n) => {
+      // 粒子爆裂反馈
+      this.particles.burst(
+        n.position.x, n.position.y, n.position.z,
+        n.kind === 'golden' ? 0xffe27a : 0x9be8ff,
+        n.kind === 'golden' ? 28 : 18,
+        4.5,
+        0.6
+      );
       n.recycle();
       s.combo += 1;
       this.comboTimer = COMBO_WINDOW;
@@ -226,6 +243,14 @@ export class Game {
     });
 
     this.collision.checkCoins(this.swift, this.spawner.activeCoins, (c) => {
+      // 粒子爆裂反馈
+      this.particles.burst(
+        c.position.x, c.position.y, c.position.z,
+        0xffd75a,
+        22,
+        4.0,
+        0.55
+      );
       c.recycle();
       s.coins += 1;
       this.audio.playCoin();
@@ -283,6 +308,9 @@ export class Game {
     // 音频状态
     this.audio.updateEnergyState(s.energy, s.combo);
 
+    // 粒子推进
+    this.particles.update(dt);
+
     // HUD
     this.emitStats();
 
@@ -310,10 +338,11 @@ export class Game {
     // 雨燕缓缓滑翔盘旋下降
     const input = this.gyro.update(dt);
     // 强制柔和的盘旋：缓慢左转 + 下沉
-    this.swift.update(sdt, 0.3, -0.25, true, false, 0);
+    this.swift.update(sdt, 0.3, -0.25, true, false);
     void input;
 
     this.spawner.tickAnimations(sdt);
+    this.particles.update(sdt);
     this.scene.parallax(this.swift.position.x);
     this.scene.updateChaseCamera(this.swift.position, this.swift.quaternion, dt, true);
 
@@ -329,7 +358,7 @@ export class Game {
     if (this.state !== 'ending') return;
     // 隐藏雨燕（化为光芒散去）
     this.swift.group.visible = false;
-    this.swift.trailPoints.visible = false;
+    this.swift.trailMesh.visible = false;
     this.audio.stopAll();
     this.setState('gameover');
     this.cb.onGameOver?.({

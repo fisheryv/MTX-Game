@@ -46,9 +46,11 @@ async function bootstrap() {
 
   // 预加载雨燕 GLB 模型
   let swiftModel: THREE.Group | undefined;
+  let swiftAnimations: THREE.AnimationClip[] | undefined;
   try {
     const loaded = await AssetLoader.loadSwift();
     swiftModel = loaded.scene;
+    swiftAnimations = loaded.animations;
   } catch (e) {
     console.warn('雨燕模型加载失败，使用程序化模型', e);
   }
@@ -87,7 +89,7 @@ async function bootstrap() {
     onGameOver: (finalStats) => {
       modal.showEndgame(finalStats);
     }
-  }, swiftModel);
+  }, swiftModel, swiftAnimations);
 
   // 模型就绪，启用开始按钮
   startBtn.textContent = '开启飞行';

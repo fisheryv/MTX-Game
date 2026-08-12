@@ -5,6 +5,12 @@ export const clamp = (v: number, min: number, max: number): number =>
 
 export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
+/** Hermite 平滑阶跃：x 在 [edge0,edge1] 间做 smoothstep，外部钳制到 0/1 */
+export const smooth01 = (edge0: number, edge1: number, x: number): number => {
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
 /** 一阶低通滤波：current += (target - current) * alpha */
 export const lowPass = (current: number, target: number, alpha: number): number =>
   current + (target - current) * alpha;

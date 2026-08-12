@@ -9,6 +9,8 @@ export class NoteItem {
   public readonly mesh: THREE.Group;
   public kind: NoteKind = 'normal';
   public active = false;
+  /** 碰撞半径（普通音符约 0.6，金色音符放大 1.3 倍约 0.78） */
+  public collideRadius = 0.6;
   public alive = true;
 
   private childMeshes: THREE.Mesh[] = [];
@@ -90,6 +92,7 @@ export class NoteItem {
     // 金色音符略大
     const s = kind === 'golden' ? 1.3 : 1.0;
     this.mesh.scale.setScalar(s);
+    this.collideRadius = 0.6 * s;
     this.mesh.position.set(x, y, z);
     this.mesh.rotation.set(0, 0, 0);
     this.mesh.visible = true;
@@ -99,8 +102,8 @@ export class NoteItem {
 
   public update(dt: number, driftZ: number) {
     if (!this.active) return;
+    // 平放后绕垂直轴（Y）旋转
     this.mesh.rotation.y += dt * 2.0;
-    this.mesh.rotation.x += dt * 1.2;
     // 轻微上下浮动
     this.mesh.position.y += Math.sin(performance.now() * 0.004 + this.mesh.position.x) * dt * 0.4;
     void driftZ;

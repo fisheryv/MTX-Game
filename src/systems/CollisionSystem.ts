@@ -16,13 +16,14 @@ export interface CollisionCallbacks {
 }
 
 export class CollisionSystem {
-  /** 雨燕 vs 一组音符 */
+  /** 雨燕 vs 一组音符（球-球碰撞，使用各自的碰撞半径） */
   public checkNotes(swift: Swift, notes: NoteItem[], cb: (n: NoteItem) => void) {
     const sp = swift.position;
-    const r = 1.5;
+    const sr = swift.collideRadius;
     for (const n of notes) {
       if (!n.active) continue;
       const p = n.position;
+      const r = sr + n.collideRadius;
       const dx = sp.x - p.x;
       const dy = sp.y - p.y;
       const dz = sp.z - p.z;
@@ -30,12 +31,14 @@ export class CollisionSystem {
     }
   }
 
+  /** 雨燕 vs 一组金币（球-球碰撞，使用各自的碰撞半径） */
   public checkCoins(swift: Swift, coins: Coin[], cb: (c: Coin) => void) {
     const sp = swift.position;
-    const r = 1.6;
+    const sr = swift.collideRadius;
     for (const c of coins) {
       if (!c.active) continue;
       const p = c.position;
+      const r = sr + c.collideRadius;
       const dx = sp.x - p.x;
       const dy = sp.y - p.y;
       const dz = sp.z - p.z;
@@ -50,6 +53,7 @@ export class CollisionSystem {
     cb: (o: Obstacle, isHit: boolean) => void
   ) {
     const sp = swift.position;
+    const sr = swift.collideRadius;
     for (const o of obstacles) {
       if (!o.active) continue;
       const p = o.position;
@@ -57,7 +61,8 @@ export class CollisionSystem {
       if (o.kind === 'thermal') {
         const dx = sp.x - p.x;
         const dz = sp.z - p.z;
-        if (dx * dx + dz * dz < 2.0 * 2.0) {
+        const rad = sr + 2.0;
+        if (dx * dx + dz * dz < rad * rad) {
           cb(o, false);
         }
         continue;
@@ -66,7 +71,7 @@ export class CollisionSystem {
         const dx = sp.x - p.x;
         const dy = sp.y - p.y;
         const dz = sp.z - p.z;
-        const rad = o.collideRadius + 1.2;
+        const rad = o.collideRadius + sr;
         if (dx * dx + dy * dy + dz * dz < rad * rad) {
           cb(o, false);
         }
@@ -77,7 +82,7 @@ export class CollisionSystem {
       const dx = sp.x - p.x;
       const dy = sp.y - p.y;
       const dz = sp.z - p.z;
-      const rad = o.collideRadius + 1.0;
+      const rad = o.collideRadius + sr;
       if (dx * dx + dy * dy + dz * dz < rad * rad) {
         cb(o, true);
       }

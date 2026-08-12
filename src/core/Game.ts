@@ -28,6 +28,8 @@ export interface HudStats {
   distanceKm: number;
   elapsed: number;
   glideActive: boolean;
+  speed: number;
+  resonanceActive: boolean;
 }
 
 export interface GameCallbacks {
@@ -126,6 +128,14 @@ export class Game {
     this.resetRun();
     this.setState('playing');
     if (!this.loop.isRunning) this.loop.start();
+  }
+
+  /** 退出当前飞行，返回启动界面 */
+  public exit() {
+    this.audio.stopAll();
+    this.loop.stop();
+    this.resetRun();
+    this.setState('menu');
   }
 
   /** 页面切到后台时暂停音频 */
@@ -379,7 +389,9 @@ export class Game {
       coins: this.stats.coins,
       distanceKm: this.stats.distance,
       elapsed: this.stats.elapsed,
-      glideActive: this.stats.glideActive
+      glideActive: this.stats.glideActive,
+      speed: this.swift.speed,
+      resonanceActive: this.resonanceTimer > 0
     });
   }
 

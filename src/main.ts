@@ -7,30 +7,24 @@ import { HUD } from './ui/HUD';
 import { PermissionModal } from './ui/PermissionModal';
 import { AssetLoader } from './systems/AssetLoader';
 import type { GameStateName } from './types';
-
-interface LastStats {
-  energy: number;
-  combo: number;
-  coins: number;
-  distanceKm: number;
-  elapsed: number;
-  glideActive: boolean;
-}
+import type { HudStats } from './core/Game';
 
 async function bootstrap() {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
   if (!canvas) throw new Error('game-canvas not found');
 
-  const hud = new HUD();
+  const hud = new HUD(() => game.exit());
 
   let game: Game;
-  let lastStats: LastStats = {
+  let lastStats: HudStats = {
     energy: 1,
     combo: 0,
     coins: 0,
     distanceKm: 0,
     elapsed: 0,
-    glideActive: false
+    glideActive: false,
+    speed: 0,
+    resonanceActive: false
   };
 
   const modal = new PermissionModal(
@@ -40,9 +34,7 @@ async function bootstrap() {
 
   // 先显示启动遮罩，按钮进入加载状态
   modal.showStart();
-  const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
-  startBtn.textContent = '加载中…';
-  startBtn.disabled = true;
+  modal.setStartLoading('加载中…', '正在准备极光羽翼');
 
   // 预加载雨燕 GLB 模型
   let swiftModel: THREE.Group | undefined;
@@ -58,6 +50,12 @@ async function bootstrap() {
   game = new Game(canvas, {
     onStateChange: (s: GameStateName) => {
       switch (s) {
+        case 'menu':
+          hud.hide();
+          modal.hideEndgame();
+          modal.setStartReady('开启飞行', '准备就绪，点击起飞');
+          modal.showStart();
+          break;
         case 'playing':
           modal.hideStart();
           modal.hideEndgame();
@@ -92,8 +90,7 @@ async function bootstrap() {
   }, swiftModel, swiftAnimations);
 
   // 模型就绪，启用开始按钮
-  startBtn.textContent = '开启飞行';
-  startBtn.disabled = false;
+  modal.setStartReady('开启飞行', '准备就绪，点击起飞');
 
   // 后台暂停音频
   document.addEventListener('visibilitychange', () => {

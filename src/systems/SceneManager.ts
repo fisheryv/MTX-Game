@@ -159,8 +159,9 @@ export class SceneManager {
     dt: number,
     slowmo = false
   ) {
-    const back = slowmo ? 9.0 : 6.0;
-    const up = slowmo ? 3.2 : 2.5;
+    // back 减小 → 镜头更靠近雨燕；up 增大 → 镜头更高，雨燕在画面中靠下
+    const back = slowmo ? 7.0 : 4.2;
+    const up = slowmo ? 3.8 : 3.2;
 
     this.tmpOffset.set(0, up, back).applyQuaternion(targetQuat);
     this.tmpTarget.copy(targetPos).add(this.tmpOffset);

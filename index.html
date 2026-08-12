@@ -16,40 +16,203 @@
     <div id="app">
       <canvas id="game-canvas"></canvas>
 
+      <!-- 极光装饰背景（菜单态可见） -->
+      <div class="aurora-bg" aria-hidden="true">
+        <div class="aurora-band band-1"></div>
+        <div class="aurora-band band-2"></div>
+        <div class="aurora-band band-3"></div>
+        <div class="stars"></div>
+      </div>
+
       <!-- 启动 / 授权遮罩 -->
-      <div id="permission-modal" class="modal hidden">
-        <div class="modal-card">
-          <h1>雨燕 · 无尽旋律</h1>
-          <p>倾斜设备以驾驭雨燕，按节奏穿越音符之河。</p>
-          <button id="start-btn">开启飞行</button>
-          <p class="hint">需要使用设备的方向传感器</p>
+      <div id="permission-modal" class="modal modal--start hidden">
+        <div class="modal-card modal-card--hero">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 48 48" width="48" height="48">
+                <defs>
+                  <linearGradient id="swift-g" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#6ad0ff"/>
+                    <stop offset="0.5" stop-color="#9be8ff"/>
+                    <stop offset="1" stop-color="#ffd75a"/>
+                  </linearGradient>
+                </defs>
+                <path d="M24 4 L30 18 L44 22 L32 28 L36 44 L24 36 L12 44 L16 28 L4 22 L18 18 Z"
+                      fill="url(#swift-g)" opacity="0.95"/>
+              </svg>
+            </div>
+            <div class="brand-text">
+              <h1 class="title">雨燕</h1>
+              <div class="subtitle">无尽旋律</div>
+            </div>
+          </div>
+
+          <p class="lead">倾斜设备驾驭气流，循着音符之河穿越极光夜空。</p>
+
+          <div class="controls-hint" id="controls-hint">
+            <div class="controls-title">操作指南</div>
+            <div class="control-row">
+              <div class="control-item">
+                <span class="key">←</span><span class="key">→</span>
+                <span class="control-label">左右倾斜</span>
+              </div>
+              <div class="control-item">
+                <span class="key">↑</span><span class="key">↓</span>
+                <span class="control-label">拉升 / 俯冲</span>
+              </div>
+              <div class="control-item">
+                <span class="key key-wide">空格</span>
+                <span class="control-label">滑翔</span>
+              </div>
+              <div class="control-item">
+                <span class="key key-wide">Shift</span>
+                <span class="control-label">闪避</span>
+              </div>
+            </div>
+          </div>
+
+          <button id="start-btn" class="btn-primary">
+            <span class="btn-spinner" id="start-spinner" aria-hidden="true"></span>
+            <span class="btn-label" id="start-label">加载中…</span>
+          </button>
+
+          <div class="hint-row">
+            <span class="hint-dot"></span>
+            <span id="start-hint">正在准备极光羽翼</span>
+          </div>
         </div>
       </div>
 
       <!-- HUD -->
       <div id="hud" class="hidden">
         <div class="hud-top">
-          <div class="meter">
-            <span class="label">能量</span>
-            <div class="bar"><div id="energy-fill" class="fill"></div></div>
+          <!-- 左：能量 -->
+          <div class="hud-panel hud-panel--energy">
+            <div class="panel-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path d="M13 2 L4 14 L11 14 L9 22 L20 8 L13 8 Z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="meter">
+              <div class="meter-head">
+                <span class="label">能量</span>
+                <span class="meter-value" id="energy-pct">100</span>
+              </div>
+              <div class="bar">
+                <div id="energy-fill" class="fill"></div>
+                <div class="bar-shine"></div>
+              </div>
+            </div>
           </div>
-          <div class="stats">
-            <div><span class="label">里程</span><span id="distance">0</span> km</div>
-            <div><span class="label">连击</span><span id="combo">0</span></div>
-            <div><span class="label">金币</span><span id="coins">0</span></div>
+
+          <!-- 中：金币 + 连击 -->
+          <div class="hud-panel hud-panel--center">
+            <div class="stat">
+              <div class="stat-icon stat-icon--coin" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="9" fill="currentColor"/><circle cx="12" cy="12" r="6" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.5"/></svg>
+              </div>
+              <div class="stat-body">
+                <span class="label">金币</span>
+                <span class="stat-value"><b id="coins">0</b></span>
+              </div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+              <div class="stat-icon stat-icon--combo" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 18 L8 6 L12 12 L16 6 L18 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+              </div>
+              <div class="stat-body">
+                <span class="label">连击</span>
+                <span class="stat-value"><b id="combo">0</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右：里程 + 速度 + 退出 -->
+          <div class="hud-panel hud-panel--right">
+            <div class="stat">
+              <div class="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2 L14 9 L22 9 L16 14 L18 22 L12 17 L6 22 L8 14 L2 9 L10 9 Z" fill="currentColor"/></svg>
+              </div>
+              <div class="stat-body">
+                <span class="label">里程</span>
+                <span class="stat-value"><b id="distance">0.00</b><em>km</em></span>
+              </div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+              <div class="stat-icon stat-icon--speed" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 12 L12 4 L20 12 L13 12 L18 20 L11 20 L14 12 Z" fill="currentColor"/></svg>
+              </div>
+              <div class="stat-body">
+                <span class="label">速度</span>
+                <span class="stat-value"><b id="speed-value">0</b><em>m/s</em></span>
+              </div>
+            </div>
+            <div class="stat-divider"></div>
+            <button id="exit-btn" class="exit-btn" aria-label="退出飞行">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M14 6 L8 12 L14 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8 12 H20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M6 5 H4 V19 H6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
+
+        <div class="hud-side">
+          <div class="badge badge--glide hidden" id="badge-glide">
+            <span class="badge-dot"></span>
+            <span class="badge-text">滑翔中</span>
+          </div>
+          <div class="badge badge--resonance hidden" id="badge-resonance">
+            <span class="badge-dot"></span>
+            <span class="badge-text">节奏共振</span>
+          </div>
+        </div>
+
         <div id="combo-flash" class="combo-flash"></div>
       </div>
 
       <!-- 终局结算 -->
-      <div id="endgame" class="modal hidden">
-        <div class="modal-card">
-          <h1>终章</h1>
-          <p class="end-line">你已飞过 <b id="end-distance">0</b> 公里</p>
-          <p class="end-line">演奏了 <b id="end-time">0</b> 秒的乐章</p>
-          <p class="end-line">收集金币 <b id="end-coins">0</b></p>
-          <button id="restart-btn">再次起飞</button>
+      <div id="endgame" class="modal modal--end hidden">
+        <div class="modal-card modal-card--end">
+          <div class="end-banner">
+            <div class="end-banner-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" width="40" height="40">
+                <path d="M24 6 L29 18 L42 20 L33 29 L35 42 L24 36 L13 42 L15 29 L6 20 L19 18 Z"
+                      fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h1 class="end-title">终章</h1>
+            <p class="end-sub" id="end-comment">羽翼暂歇，旋律未止</p>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card stat-card--primary">
+              <div class="stat-card-label">飞行里程</div>
+              <div class="stat-card-value"><b id="end-distance">0</b><em>km</em></div>
+              <div class="stat-card-best hidden" id="best-distance">最佳 0 km</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">演奏时长</div>
+              <div class="stat-card-value"><b id="end-time">0</b><em>s</em></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">金币</div>
+              <div class="stat-card-value"><b id="end-coins">0</b></div>
+              <div class="stat-card-best hidden" id="best-coins">最佳 0</div>
+            </div>
+          </div>
+
+          <div class="end-record hidden" id="end-record">
+            <span class="record-star" aria-hidden="true">★</span>
+            <span>新纪录！</span>
+          </div>
+
+          <button id="restart-btn" class="btn-primary">
+            <span class="btn-label">再次起飞</span>
+          </button>
         </div>
       </div>
     </div>

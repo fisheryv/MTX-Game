@@ -4,8 +4,7 @@ import type { UserConfig } from 'vite';
 export default defineConfig({
   base: './',
   server: {
-    host: true,
-    https: false
+    host: true
   },
   build: {
     target: 'es2020',

@@ -1,6 +1,6 @@
 {
-  "appId": "com.swiftsong.game",
-  "appName": "Song of the Swift",
+  "appId": "com.fisheryv.swift",
+  "appName": "Swift: Endless Melody",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

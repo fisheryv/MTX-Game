@@ -5,4 +5,21 @@ dist
 .vscode/*
 !.vscode/extensions.json
 .idea
-docs/*
+docs
+
+# 命令行构建临时产物（本地便携 JDK / 构建日志）
+.tools/
+build-android.log
+
+# Capacitor 原生工程构建产物
+android/app/build/
+android/build/
+android/.gradle/
+android/captures/
+android/local.properties
+android/app/src/main/assets/public/
+ios/App/build/
+ios/App/Pods/
+ios/App/App/public/
+ios/App/output/
+ios/DerivedData/

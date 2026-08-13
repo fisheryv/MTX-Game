@@ -33,7 +33,7 @@ class AssetLoaderImpl {
 
   /** 加载雨燕模型 */
   public loadSwift(): Promise<LoadedModel> {
-    return this.load('/assets/models/swift3.glb');
+    return this.load('/assets/models/swift.glb');
   }
 }
 

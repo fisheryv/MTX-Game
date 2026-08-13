@@ -16,6 +16,9 @@ export class HUD {
   private badgeResonance: HTMLElement;
   private comboFlash: HTMLElement;
   private exitBtn: HTMLElement;
+  private tutorialPrompt: HTMLElement;
+  private tutorialTitle: HTMLElement;
+  private tutorialHint: HTMLElement;
 
   private flashTimer: number | null = null;
 
@@ -31,9 +34,16 @@ export class HUD {
     this.badgeResonance = document.getElementById('badge-resonance')!;
     this.comboFlash = document.getElementById('combo-flash')!;
     this.exitBtn = document.getElementById('exit-btn')!;
+    this.tutorialPrompt = document.getElementById('tutorial-prompt')!;
+    this.tutorialTitle = document.getElementById('tutorial-prompt-title')!;
+    this.tutorialHint = document.getElementById('tutorial-prompt-hint')!;
 
     if (onExit) {
-      this.exitBtn.addEventListener('click', onExit);
+      this.exitBtn.addEventListener('click', (e) => {
+        // 阻止冒泡到 document，避免退出后同一次点击被菜单当作“点击起飞”
+        e.stopPropagation();
+        onExit();
+      });
     }
   }
 
@@ -73,5 +83,20 @@ export class HUD {
     this.flashTimer = window.setTimeout(() => {
       this.comboFlash.classList.remove('show');
     }, 1000);
+  }
+
+  /** 教学阶段提示：title 为空则隐藏 */
+  public setTutorialPrompt(title: string, hint: string) {
+    if (!title) {
+      this.tutorialPrompt.classList.add('hidden');
+      return;
+    }
+    this.tutorialTitle.textContent = title;
+    this.tutorialHint.textContent = hint;
+    this.tutorialPrompt.classList.remove('hidden');
+    // 重启入场动画
+    this.tutorialPrompt.classList.remove('is-in');
+    void this.tutorialPrompt.offsetWidth;
+    this.tutorialPrompt.classList.add('is-in');
   }
 }

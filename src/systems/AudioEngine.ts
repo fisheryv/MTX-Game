@@ -19,9 +19,62 @@ export class AudioEngine {
   private padOscs: OscillatorNode[] = [];
   private started = false;
 
+  // 背景音乐（流式播放 m4a）
+  private bgmEl: HTMLAudioElement | null = null;
+  private bgmPath = 'audio/Moss-Tarp Quiet by Fisher Yu_1.m4a';
+
+  // 音乐 / 音效开关（持久化到 localStorage）
+  private musicEnabled = true;
+  private sfxEnabled = true;
+  private static readonly MUSIC_KEY = 'sem-music-on-v1';
+  private static readonly SFX_KEY = 'sem-sfx-on-v1';
+
   // 五声音阶（C 大调五声），用于“玩家演奏”旋律
   private readonly scale = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25];
   private noteCursor = 0;
+
+  constructor() {
+    try {
+      this.musicEnabled = localStorage.getItem(AudioEngine.MUSIC_KEY) !== '0';
+      this.sfxEnabled = localStorage.getItem(AudioEngine.SFX_KEY) !== '0';
+    } catch {
+      /* localStorage 不可用时使用默认开启 */
+    }
+  }
+
+  public isMusicEnabled(): boolean {
+    return this.musicEnabled;
+  }
+
+  public isSfxEnabled(): boolean {
+    return this.sfxEnabled;
+  }
+
+  /** 开关背景音乐：关闭时暂停 BGM，开启时（若已初始化）续播 */
+  public setMusicEnabled(on: boolean) {
+    this.musicEnabled = on;
+    try {
+      localStorage.setItem(AudioEngine.MUSIC_KEY, on ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+    if (!this.bgmEl) return;
+    if (on) {
+      void this.bgmEl.play().catch(() => {});
+    } else if (!this.bgmEl.paused) {
+      this.bgmEl.pause();
+    }
+  }
+
+  /** 开关音效 */
+  public setSfxEnabled(on: boolean) {
+    this.sfxEnabled = on;
+    try {
+      localStorage.setItem(AudioEngine.SFX_KEY, on ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }
 
   /** 必须在用户手势中调用 */
   public async resume(): Promise<void> {
@@ -39,8 +92,20 @@ export class AudioEngine {
     }
     if (!this.started) {
       this.started = true;
-      this.startPad();
+      // 已改用真实 BGM 取代合成 pad 氛围层；保留 startPad 以备将来切换
+      void this.startPad;
+      await this.startBgm();
+    } else if (this.bgmEl && this.bgmEl.paused) {
+      // 已创建但被暂停（如 suspend 后恢复）：续播
+      await this.bgmEl.play().catch(() => {
+        /* ignore */
+      });
     }
+  }
+
+  /** 背景音乐是否正在播放 */
+  public isBgmPlaying(): boolean {
+    return !!this.bgmEl && !this.bgmEl.paused;
   }
 
   private buildGraph() {
@@ -84,6 +149,32 @@ export class AudioEngine {
     }
   }
 
+  /** 流式播放背景音乐（循环） */
+  private async startBgm(): Promise<void> {
+    // 音乐已关闭：不创建/不播放
+    if (!this.musicEnabled) return;
+    // 已存在元素：续播（stopAll/suspend 后恢复）
+    if (this.bgmEl) {
+      if (this.bgmEl.paused) {
+        await this.bgmEl.play().catch(() => {
+          /* ignore */
+        });
+      }
+      return;
+    }
+    const el = new Audio(encodeURI(this.bgmPath));
+    el.loop = true;
+    el.preload = 'auto';
+    // 直接用 HTMLAudioElement 播放，不接入 Web Audio 图
+    // 避免经过 filterNode（低通滤波会随能量降低而衰减 BGM 高频）
+    // 避免经过 musicGain/masterGain（多层增益导致音量过低）
+    el.volume = 0.5; // BGM 独立音量
+    this.bgmEl = el;
+    await el.play().catch(() => {
+      /* 自动播放被拦截，等待后续 resume 重试 */
+    });
+  }
+
   /** 依据能量(0~1)与 combo 调节音色 */
   public updateEnergyState(energyRatio: number, combo: number) {
     if (!this.ctx) return;
@@ -101,7 +192,7 @@ export class AudioEngine {
 
   /** 收集音符：播放一个音阶递进的音 */
   public playNote(kind: 'normal' | 'golden') {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.sfxEnabled) return;
     const ctx = this.ctx;
     const freq = this.scale[this.noteCursor % this.scale.length] * (kind === 'golden' ? 2 : 1);
     this.noteCursor++;
@@ -110,7 +201,7 @@ export class AudioEngine {
     o.type = kind === 'golden' ? 'triangle' : 'sine';
     o.frequency.value = freq;
     const g = ctx.createGain();
-    const peak = kind === 'golden' ? 0.5 : 0.32;
+    const peak = kind === 'golden' ? 0.9 : 0.6;
     g.gain.setValueAtTime(0.0001, now);
     g.gain.exponentialRampToValueAtTime(peak, now + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
@@ -122,7 +213,7 @@ export class AudioEngine {
 
   /** Combo 共振：和弦上行短促闪光 */
   public playResonance() {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.sfxEnabled) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
     [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
@@ -143,7 +234,7 @@ export class AudioEngine {
 
   /** 拾取金币：清脆的钟音 */
   public playCoin() {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.sfxEnabled) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
     const o = ctx.createOscillator();
@@ -151,7 +242,7 @@ export class AudioEngine {
     o.frequency.value = 1318.51;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.2, now + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.4, now + 0.005);
     g.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
     o.connect(g);
     g.connect(this.sfxGain);
@@ -161,7 +252,7 @@ export class AudioEngine {
 
   /** 碰撞受击：低频闷响 */
   public playHit() {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.sfxEnabled) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
     const o = ctx.createOscillator();
@@ -179,7 +270,7 @@ export class AudioEngine {
 
   /** 终局：缓慢下行的离别残音 */
   public playEndgame() {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.musicEnabled) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
     const notes = [659.25, 587.33, 523.25, 440.0, 392.0, 329.63];
@@ -205,6 +296,7 @@ export class AudioEngine {
     if (this.ctx && this.ctx.state === 'running') {
       this.ctx.suspend().catch(() => {});
     }
+    if (this.bgmEl && !this.bgmEl.paused) this.bgmEl.pause();
   }
 
   public stopAll() {
@@ -218,5 +310,7 @@ export class AudioEngine {
     });
     this.padOscs = [];
     this.started = false;
+    // 暂停背景音乐（保留元素，便于后续 resume 续播）
+    if (this.bgmEl && !this.bgmEl.paused) this.bgmEl.pause();
   }
 }

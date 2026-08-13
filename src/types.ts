@@ -1,6 +1,15 @@
 /** 游戏全局共享类型定义 */
 
-export type GameStateName = 'boot' | 'menu' | 'playing' | 'ending' | 'gameover';
+export type GameStateName = 'boot' | 'menu' | 'tutorial' | 'playing' | 'ending' | 'gameover';
+
+/** 教学关卡阶段（《序章：初响与试翼》） */
+export type TutorialStage =
+  | 'calibration' // 唤醒与校准：保持水平
+  | 'steering' // 离巢与横向转向：穿过光环
+  | 'notes' // 音符收集与能量感知
+  | 'pitch' // 俯冲与拉升
+  | 'thermal' // 上升气流突破
+  | 'done'; // 完成，过渡到无尽模式
 
 /** 玩家姿态输入（来自陀螺仪） */
 export interface ControlInput {

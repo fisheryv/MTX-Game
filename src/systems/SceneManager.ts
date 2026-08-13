@@ -160,8 +160,8 @@ export class SceneManager {
     slowmo = false
   ) {
     // back 减小 → 镜头更靠近雨燕；up 增大 → 镜头更高，雨燕在画面中靠下
-    const back = slowmo ? 7.0 : 4.2;
-    const up = slowmo ? 3.8 : 3.2;
+    const back = slowmo ? 4.0 : 1.4;
+    const up = slowmo ? 2.4 : 1.8;
 
     this.tmpOffset.set(0, up, back).applyQuaternion(targetQuat);
     this.tmpTarget.copy(targetPos).add(this.tmpOffset);

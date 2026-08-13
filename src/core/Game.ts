@@ -16,6 +16,7 @@ import { AudioEngine } from '../systems/AudioEngine';
 import { CollisionSystem } from '../systems/CollisionSystem';
 import { LevelSpawner } from '../systems/LevelSpawner';
 import { ParticleBurst } from '../systems/ParticleBurst';
+import { TutorialDirector } from '../systems/TutorialDirector';
 import { Swift } from '../entities/Swift';
 import { Loop } from './Loop';
 import { clamp } from '../utils/MathUtils';
@@ -38,6 +39,8 @@ export interface GameCallbacks {
   onComboFlash?: (level: 'resonance' | 'hit') => void;
   onEndgameStart?: () => void;
   onGameOver?: (finalStats: { distanceKm: number; elapsed: number; coins: number }) => void;
+  /** 教学阶段提示更新（title 主提示，hint 副提示；title 为空表示清空提示） */
+  onTutorialPrompt?: (title: string, hint: string) => void;
 }
 
 const MAX_ENERGY = 1.0;
@@ -63,6 +66,7 @@ export class Game {
   private readonly spawner: LevelSpawner;
   private readonly swift: Swift;
   private readonly particles: ParticleBurst;
+  private readonly tutorial: TutorialDirector;
   private readonly loop: Loop;
 
   private stats: PlayerStats = {
@@ -92,12 +96,13 @@ export class Game {
     canvas: HTMLCanvasElement,
     cb: GameCallbacks,
     swiftModel?: THREE.Group,
-    swiftAnimations?: THREE.AnimationClip[]
+    swiftAnimations?: THREE.AnimationClip[],
+    audio?: AudioEngine
   ) {
     this.cb = cb;
     this.scene = new SceneManager(canvas);
     this.gyro = new GyroController();
-    this.audio = new AudioEngine();
+    this.audio = audio ?? new AudioEngine();
     this.collision = new CollisionSystem();
     this.swift = new Swift(swiftModel, swiftAnimations);
     this.scene.scene.add(this.swift.group);
@@ -105,6 +110,14 @@ export class Game {
     this.spawner = new LevelSpawner(this.scene.scene);
     this.particles = new ParticleBurst(256);
     this.scene.scene.add(this.particles.points);
+    this.tutorial = new TutorialDirector(this.scene.scene, {
+      onPrompt: (title, hint) => this.cb.onTutorialPrompt?.(title, hint),
+      onProgress: (kind) => {
+        if (kind === 'ring') this.audio.playNote('normal');
+        else if (kind === 'stage') this.audio.playResonance();
+      },
+      onComplete: () => this.finishTutorial()
+    });
 
     this.loop = new Loop(this.onFixedUpdate, this.onRender);
   }
@@ -122,6 +135,31 @@ export class Game {
     this.loop.start();
   }
 
+  /** 首次游玩：授权 + 解锁音频 + 进入教学关卡《序章：初响与试翼》 */
+  public async startTutorial() {
+    const ok = await this.gyro.requestPermission();
+    if (ok) this.gyro.enable();
+    await this.audio.resume();
+
+    this.resetRun();
+    this.tutorial.begin();
+    this.setState('tutorial');
+    if (!this.loop.isRunning) this.loop.start();
+  }
+
+  /** 教学完成：清理教学内容，无缝切入无尽模式 */
+  private finishTutorial() {
+    this.tutorial.end();
+    this.cb.onTutorialPrompt?.('', '');
+    // 保留雨燕当前姿态与速度，重置关卡生成起点到雨燕前方
+    this.spawner.reset(this.swift.position.z - 80);
+    // 重置能量与统计，正式开始计分
+    this.stats.energy = MAX_ENERGY;
+    this.stats.combo = 0;
+    this.comboTimer = 0;
+    this.setState('playing');
+  }
+
   public restart() {
     this.audio.stopAll();
     void this.audio.resume();
@@ -134,6 +172,8 @@ export class Game {
   public exit() {
     this.audio.stopAll();
     this.loop.stop();
+    this.tutorial.end();
+    this.cb.onTutorialPrompt?.('', '');
     this.resetRun();
     this.setState('menu');
   }
@@ -143,7 +183,7 @@ export class Game {
     this.audio.suspend();
   }
   public onVisibilityVisible() {
-    if (this.state === 'playing' || this.state === 'ending') {
+    if (this.state === 'playing' || this.state === 'ending' || this.state === 'tutorial') {
       void this.audio.resume();
     }
   }
@@ -180,6 +220,7 @@ export class Game {
 
   private onFixedUpdate = (dt: number) => {
     if (this.state === 'playing') this.updatePlaying(dt);
+    else if (this.state === 'tutorial') this.updateTutorial(dt);
     else if (this.state === 'ending') this.updateEnding(dt);
     // menu / gameover 不推进逻辑
   };
@@ -272,8 +313,9 @@ export class Game {
       s.invincibleTimer > 0,
       (o, isHit) => {
         if (o.kind === 'thermal') {
-          this.thermalBoost = 0.05; // 每帧叠加一点，离开后由 update 衰减
-          // 上升气流：向前加速 + 微量能量
+          // 进入上升气流：充能托举计时器（离开后余流仍持续托举）
+          this.thermalBoost = 1.2;
+          // 向前加速 + 微量能量
           this.swift.speed += 12 * dt;
           s.energy = clamp(s.energy + 0.02 * dt, 0, MAX_ENERGY);
         } else if (o.kind === 'turbulence') {
@@ -291,8 +333,11 @@ export class Game {
       }
     );
 
-    // 上升气流增益衰减
-    this.thermalBoost = Math.max(0, this.thermalBoost - dt * 0.5);
+    // 上升气流：只要托举计时器 > 0 就持续抬升雨燕（进入后余流仍托举一段）
+    if (this.thermalBoost > 0) {
+      this.swift.position.y = Math.min(this.swift.position.y + 18 * dt, 58);
+      this.thermalBoost = Math.max(0, this.thermalBoost - dt);
+    }
 
     // 能量衰减（滑翔与共振期间降低；距离越远衰减越快）
     let decay = BASE_DECAY * (1 + s.distance * 0.04);
@@ -328,6 +373,81 @@ export class Game {
     if (s.energy <= 0) {
       this.beginEndgame();
     }
+  }
+
+  private updateTutorial(dt: number) {
+    const input = this.gyro.update(dt);
+    const s = this.stats;
+    s.elapsed += dt;
+
+    // 闪避（教学中允许练习，不消耗能量）
+    if (input.tapPressed) {
+      this.swift.dodge(input.roll >= 0 ? 1 : -1);
+    }
+    s.glideActive = input.glideHeld;
+
+    // 更新雨燕（教学期间能量不衰减，专注体感练习）
+    this.swift.update(dt, input.pitch, input.roll, s.glideActive, false);
+
+    // 教学期间放慢前进速度，让玩家有充足时间响应每个阶段（thermal 除外，需加速突破）
+    if (this.tutorial.currentStage !== 'thermal') {
+      this.swift.speed = Math.min(this.swift.speed, 15);
+    }
+
+    // 推进教学导演逻辑
+    const done = this.tutorial.update(
+      dt,
+      { scene: this.scene.scene, swift: this.swift },
+      { pitch: input.pitch, roll: input.roll },
+      (kind) => {
+        // 吃音符：补能量 + 粒子 + 音效 + combo（练习计分感）
+        this.particles.burst(
+          this.swift.position.x,
+          this.swift.position.y,
+          this.swift.position.z,
+          kind === 'golden' ? 0xffe27a : 0x9be8ff,
+          kind === 'golden' ? 28 : 18,
+          4.5,
+          0.6
+        );
+        s.combo += 1;
+        this.comboTimer = COMBO_WINDOW;
+        s.energy = clamp(
+          s.energy + (kind === 'golden' ? GOLDEN_ENERGY : NOTE_ENERGY),
+          0,
+          MAX_ENERGY
+        );
+        this.audio.playNote(kind);
+      },
+      () => {
+        // 穿环：粒子反馈（提示音由 director 的 onProgress 触发）
+        this.particles.burst(
+          this.swift.position.x,
+          this.swift.position.y,
+          this.swift.position.z,
+          0xffca6a,
+          20,
+          4.0,
+          0.55
+        );
+      }
+    );
+
+    // thermal 阶段：进入上升气流时给予托举与加速
+    if (this.tutorial.currentStage === 'thermal') {
+      this.swift.position.y = Math.min(this.swift.position.y + 16 * dt, 58);
+      this.swift.speed += 6 * dt;
+      s.energy = clamp(s.energy + 0.03 * dt, 0, MAX_ENERGY);
+    }
+
+    // 相机 / 视差 / 粒子 / 音频
+    this.scene.parallax(this.swift.position.x);
+    this.scene.updateChaseCamera(this.swift.position, this.swift.quaternion, dt, false);
+    this.audio.updateEnergyState(s.energy, s.combo);
+    this.particles.update(dt);
+    this.emitStats();
+
+    if (done) this.finishTutorial();
   }
 
   private beginEndgame() {

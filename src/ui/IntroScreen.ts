@@ -86,7 +86,6 @@ const CHAPTERS: IntroChapter[] = [
 
 export class IntroScreen {
   private root: HTMLElement;
-  private scrollEl: HTMLElement;
   private contentEl: HTMLElement;
   private skipBtn: HTMLElement;
   private rafId = 0;
@@ -96,13 +95,11 @@ export class IntroScreen {
 
   constructor(private readonly onCompleted: () => void) {
     this.root = document.getElementById('intro-screen')!;
-    this.scrollEl = this.root.querySelector('.intro-scroll')!;
     this.contentEl = this.root.querySelector('.intro-content')!;
     this.skipBtn = this.root.querySelector('.intro-skip')!;
 
     this.renderContent();
     this.skipBtn.addEventListener('click', () => this.finish());
-    // 点击空白处不触发跳过，避免误触；仅跳过按钮可提前结束
   }
 
   /** 是否已经展示过序章 */
@@ -125,7 +122,7 @@ export class IntroScreen {
 
   public show() {
     this.root.classList.remove('hidden');
-    // 等下一帧让浏览器布局完成后再计算高度
+    // 进入即开始滚动（等下一帧让浏览器布局完成后再计算高度）
     requestAnimationFrame(() => this.startScroll());
   }
 

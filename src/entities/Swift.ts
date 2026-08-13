@@ -10,8 +10,10 @@ export class Swift {
   public readonly position: THREE.Vector3;
   public readonly quaternion: THREE.Quaternion;
   public readonly velocity: THREE.Vector3;
-  /** 碰撞半径（包裹整个雨燕的包围球） */
+  /** 碰撞半径（向后兼容：最大半轴，用于粗略包围球判定） */
   public readonly collideRadius: number;
+  /** 碰撞半轴（椭球，按 X/Y/Z 分别匹配身体形状，比包围球更贴切） */
+  public readonly collideHalfExtents: THREE.Vector3;
 
   // 模型模式（GLB）vs 程序化模式
   private useModel = false;
@@ -69,12 +71,15 @@ export class Swift {
     if (model) {
       this.setupModel(model, animations);
       this.useModel = true;
-      // swift1.glb 缩放 1.8 后约 3.4×0.4×1.9，对角线半长约 2.0
-      this.collideRadius = 2.0;
+      // swift1.glb 缩放 1.8 后约 3.4×0.4×1.9
+      // 翅膀是视觉元素，碰撞只取身体：X 取身体半宽，Y/Z 取实际半高/半长
+      this.collideHalfExtents = new THREE.Vector3(1, 0.5, 1);
+      this.collideRadius = this.collideHalfExtents.length();
     } else {
       this.buildProceduralMesh();
-      // 程序化雨燕约 1.1×0.8×2.4，包围球半径约 1.4
-      this.collideRadius = 1.4;
+      // 程序化雨燕约 1.1×0.8×2.4
+      this.collideHalfExtents = new THREE.Vector3(0.55, 0.4, 1.2);
+      this.collideRadius = this.collideHalfExtents.length();
     }
     this.buildTrail();
   }

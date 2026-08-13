@@ -34,6 +34,88 @@
       <!-- 菜单背景图（bg.png） -->
       <div class="menu-bg" aria-hidden="true"></div>
 
+      <!-- 主菜单顶部按钮（帮助 / 设置） -->
+      <div id="menu-topbar" class="menu-topbar hidden">
+        <button id="help-btn" class="icon-btn" type="button" aria-label="帮助">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M9.2 9.2a2.8 2.8 0 1 1 3.6 2.7c-.9.4-1.3 1-1.3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="11.5" cy="17" r="1.2" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="settings-btn" class="icon-btn" type="button" aria-label="设置">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 2.5l1.3 2.2 2.5-.5.6 2.5 2.4 1-.6 2.5 1.7 1.9-1.7 1.9.6 2.5-2.4 1-.6 2.5-2.5-.5L12 21.5l-1.3-2.2-2.5.5-.6-2.5-2.4-1 .6-2.5L4.1 12l1.7-1.9-.6-2.5 2.4-1 .6-2.5 2.5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 设置面板 -->
+      <div id="settings-modal" class="modal modal--panel hidden">
+        <div class="modal-card modal-card--panel">
+          <button class="panel-close" id="settings-close" type="button" aria-label="关闭">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <h2 class="panel-title">设置</h2>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">背景音乐</span>
+              <span class="setting-desc">开启后播放飞行氛围音乐</span>
+            </div>
+            <button id="toggle-music" class="switch" type="button" role="switch" aria-checked="true">
+              <span class="switch-knob"></span>
+            </button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">游戏音效</span>
+              <span class="setting-desc">音符、金币、碰撞等反馈音</span>
+            </div>
+            <button id="toggle-sfx" class="switch" type="button" role="switch" aria-checked="true">
+              <span class="switch-knob"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 帮助面板 -->
+      <div id="help-modal" class="modal modal--panel hidden">
+        <div class="modal-card modal-card--panel modal-card--help">
+          <button class="panel-close" id="help-close" type="button" aria-label="关闭">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <h2 class="panel-title">游戏帮助</h2>
+          <div class="help-scroll">
+            <section class="help-section">
+              <h3 class="help-heading">游戏介绍</h3>
+              <p class="help-text">《雨燕：无尽旋律》是一款体感飞行游戏。你化身一只生而无足的雨燕，翱翔于万米高空，收集散落的音符与金币，在坠落之前，把天空谱写成一首《天空绝响》。</p>
+            </section>
+            <section class="help-section">
+              <h3 class="help-heading">操作说明</h3>
+              <ul class="help-list">
+                <li><b>倾斜设备</b>：左右倾斜控制雨燕横向转向</li>
+                <li><b>前后俯仰</b>：前倾俯冲下降，后仰拉升爬高</li>
+                <li><b>收集音符</b>：飞过音符补充能量并累积连击</li>
+                <li><b>拾取金币</b>：沿途金币可提升最终得分</li>
+                <li><b>躲避障碍</b>：撞击障碍会损耗能量，能量耗尽即坠落</li>
+                <li><b>上升气流</b>：飞入光柱可被托举，快速攀升</li>
+              </ul>
+            </section>
+            <section class="help-section">
+              <h3 class="help-heading">开发者信息</h3>
+              <p class="help-text">Fisher E. Yu</p>
+              <p class="help-text help-text--dim">MTX 课余小项目</p>
+              <p class="help-text help-text--dim">Made with ♥ by vibe coding</p>
+            </section>
+          </div>
+        </div>
+      </div>
+
       <!-- 极光装饰背景（菜单态可见） -->
       <div class="aurora-bg is-hidden" aria-hidden="true">
         <div class="aurora-band band-1"></div>
@@ -131,6 +213,12 @@
         </div>
 
         <div id="combo-flash" class="combo-flash"></div>
+
+        <!-- 教学阶段提示（居中大字） -->
+        <div id="tutorial-prompt" class="tutorial-prompt hidden">
+          <div class="tutorial-prompt-title" id="tutorial-prompt-title"></div>
+          <div class="tutorial-prompt-hint" id="tutorial-prompt-hint"></div>
+        </div>
       </div>
 
       <!-- 终局结算 -->

@@ -1,6 +1,6 @@
 /**
- * 碰撞系统：基于球体（BoundingSphere）的轻量检测。
- * 避免引入物理引擎，满足“雨燕 + 球体”需求。
+ * 碰撞系统：雨燕使用椭球（按轴半长），其他物体使用球体。
+ * 椭球 vs 球 = Minkowski 和（椭球膨胀球半径），归一化后比较距离平方。
  */
 import type { Swift } from '../entities/Swift';
 import type { NoteItem } from '../entities/NoteItem';
@@ -16,33 +16,33 @@ export interface CollisionCallbacks {
 }
 
 export class CollisionSystem {
-  /** 雨燕 vs 一组音符（球-球碰撞，使用各自的碰撞半径） */
+  /** 雨燕（椭球）vs 一组音符（球）：归一化距离平方 < 1 */
   public checkNotes(swift: Swift, notes: NoteItem[], cb: (n: NoteItem) => void) {
     const sp = swift.position;
-    const sr = swift.collideRadius;
+    const he = swift.collideHalfExtents;
     for (const n of notes) {
       if (!n.active) continue;
       const p = n.position;
-      const r = sr + n.collideRadius;
-      const dx = sp.x - p.x;
-      const dy = sp.y - p.y;
-      const dz = sp.z - p.z;
-      if (dx * dx + dy * dy + dz * dz < r * r) cb(n);
+      const r = n.collideRadius;
+      const dx = (sp.x - p.x) / (he.x + r);
+      const dy = (sp.y - p.y) / (he.y + r);
+      const dz = (sp.z - p.z) / (he.z + r);
+      if (dx * dx + dy * dy + dz * dz < 1) cb(n);
     }
   }
 
-  /** 雨燕 vs 一组金币（球-球碰撞，使用各自的碰撞半径） */
+  /** 雨燕（椭球）vs 一组金币（球） */
   public checkCoins(swift: Swift, coins: Coin[], cb: (c: Coin) => void) {
     const sp = swift.position;
-    const sr = swift.collideRadius;
+    const he = swift.collideHalfExtents;
     for (const c of coins) {
       if (!c.active) continue;
       const p = c.position;
-      const r = sr + c.collideRadius;
-      const dx = sp.x - p.x;
-      const dy = sp.y - p.y;
-      const dz = sp.z - p.z;
-      if (dx * dx + dy * dy + dz * dz < r * r) cb(c);
+      const r = c.collideRadius;
+      const dx = (sp.x - p.x) / (he.x + r);
+      const dy = (sp.y - p.y) / (he.y + r);
+      const dz = (sp.z - p.z) / (he.z + r);
+      if (dx * dx + dy * dy + dz * dz < 1) cb(c);
     }
   }
 
@@ -53,37 +53,37 @@ export class CollisionSystem {
     cb: (o: Obstacle, isHit: boolean) => void
   ) {
     const sp = swift.position;
-    const sr = swift.collideRadius;
+    const he = swift.collideHalfExtents;
     for (const o of obstacles) {
       if (!o.active) continue;
       const p = o.position;
       // thermal 是垂直光柱，做 xz 距离判定 + 任意 y
       if (o.kind === 'thermal') {
-        const dx = sp.x - p.x;
-        const dz = sp.z - p.z;
-        const rad = sr + 2.0;
-        if (dx * dx + dz * dz < rad * rad) {
+        const r = 2.0;
+        const dx = (sp.x - p.x) / (he.x + r);
+        const dz = (sp.z - p.z) / (he.z + r);
+        if (dx * dx + dz * dz < 1) {
           cb(o, false);
         }
         continue;
       }
       if (o.kind === 'turbulence') {
-        const dx = sp.x - p.x;
-        const dy = sp.y - p.y;
-        const dz = sp.z - p.z;
-        const rad = o.collideRadius + sr;
-        if (dx * dx + dy * dy + dz * dz < rad * rad) {
+        const r = o.collideRadius;
+        const dx = (sp.x - p.x) / (he.x + r);
+        const dy = (sp.y - p.y) / (he.y + r);
+        const dz = (sp.z - p.z) / (he.z + r);
+        if (dx * dx + dy * dy + dz * dz < 1) {
           cb(o, false);
         }
         continue;
       }
       // rock：碰撞
       if (invincible) continue;
-      const dx = sp.x - p.x;
-      const dy = sp.y - p.y;
-      const dz = sp.z - p.z;
-      const rad = o.collideRadius + sr;
-      if (dx * dx + dy * dy + dz * dz < rad * rad) {
+      const r = o.collideRadius;
+      const dx = (sp.x - p.x) / (he.x + r);
+      const dy = (sp.y - p.y) / (he.y + r);
+      const dz = (sp.z - p.z) / (he.z + r);
+      if (dx * dx + dy * dy + dz * dz < 1) {
         cb(o, true);
       }
     }
